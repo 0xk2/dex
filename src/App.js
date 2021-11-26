@@ -1,6 +1,40 @@
 import './App.css';
 import { useState } from 'react';
 import CustomerNumberFormat from './components/CustomNumerFormat';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+export const options = {
+  responsive: true,
+  // maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top',
+    },
+    title: {
+      display: true,
+      text: 'Eth price after transactions',
+    },
+  },
+};
 const defaultTxn = {
   type: "get_eth",
   value: 0
@@ -13,6 +47,7 @@ function App() {
   const [newTxn, setNewTxn] = useState({...defaultTxn})
   const [k, setK] = useState(1000)
   const [initEth, setInitEth] = useState(1)
+  const [fee, setFee] = useState(0.0025)
   // const [currentEth, setCurrentEth] = useState(1)
   const [started, setStarted] = useState(false)
   function cal(type, value) {
@@ -36,10 +71,30 @@ function App() {
     }
     return {value, type, swap_result, eth_price, nextPool};
   }
+  let eth_fee = 0;
+  let usdt_fee = 0;
+  for(var i=0;i<txns.length;i++){
+    if(txns[i].type === 'get_eth'){
+      eth_fee += txns[i].swap_result * fee
+    }else{
+      usdt_fee += txns[i].swap_result * fee
+    }
+  }
   return (
     <div className="App">
       <h1>AMM demo, a sample DEX</h1>
       <h4>Pair eth - usdt</h4>
+      <Line options={options} data={{
+        labels: Array.from({length: txns.length}, (_, i) => i),
+        datasets: [
+          {
+            label: 'ETH - USDT price',
+            data: txns.map((txn) => {return txn.eth_price}),
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+          }
+        ],
+      }} height={200} width={1000} />
       <div>
         K is {started === false ? <CustomerNumberFormat type="input" value={k} onValueChange={(values) => {
           const { value } = values;
@@ -53,6 +108,14 @@ function App() {
         }} thousandSeparator={true} decimalScale={3} /> : num(initEth)} ETH, 
         {num(k/initEth)} USDT), init price: 
         1 ETH = {num(k/(initEth*initEth))} USDT &nbsp;
+      </div>
+      <div>
+        Fee: {started === false? <><CustomerNumberFormat type="input" value={fee} onValueChange={(values) => {
+          const {value} = values
+          setFee(parseFloat(value))
+        }} /> aka</> : null} {fee*100}% {started === true ? <> - Total fee: {num(eth_fee)} ETH, {num(usdt_fee)} USDT</>:null}
+      </div>
+      <div>
         {started === false? <button onClick={() => {
           setStarted(true)
         }}>Start!</button> : <button onClick={() => {
@@ -71,7 +134,7 @@ function App() {
           <option value="get_eth">Swap USDT for ETH</option>
           <option value="get_usdt">Swap ETH for USDT</option>
         </select>; swap <CustomerNumberFormat type="input" value={newTxn.value} onValueChange={(values) => {
-          const value = parseInt(values.value)
+          const value = parseFloat(values.value)
           const type = newTxn.type
           setNewTxn({...cal(type, value)})
         }} thousandSeparator={true} decimalScale={3} /> 
@@ -84,22 +147,22 @@ function App() {
             alert('invalid value!')
           }
         }}>Swap now</button>
-      </div> : null }
+      </div>: null }
       <div style={{marginTop: "10px"}}>
         {txns.map((txn, k) => {
           const {type, value, swap_result, eth_price, nextPool} = txn
           return <div key={k} style={{marginTop: "5px"}}>
             Transaction {k}: Exchange {num(value)} 
             &nbsp;{type === 'get_eth' ? "USDT" : "ETH"} for 
-            &nbsp; {num(swap_result)} &nbsp;{type !== 'get_eth' ? "USDT" : "ETH"}
-            &nbsp; with 1 ETH = {num(eth_price)} USDT &nbsp;
-            next pool: ({num(nextPool.eth)} ETH
+            &nbsp; {num(swap_result*(1-fee))} {type !== 'get_eth' ? "USDT" : "ETH"},
+            fee: {num(swap_result*fee)} {type !== 'get_eth' ? "USDT" : "ETH"}
+            &nbsp; with 1 ETH = {num(eth_price)} USDT. Pool after this txn: ({num(nextPool.eth)} ETH
             , {num(nextPool.usdt)} USDT)
           </div>  
-        })}
+        }).reverse()}
       </div>
     </div>
-  );
+  )
 }
 
 export default App;
