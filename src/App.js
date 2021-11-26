@@ -13,7 +13,7 @@ function App() {
   const [newTxn, setNewTxn] = useState({...defaultTxn})
   const [k, setK] = useState(1000)
   const [initEth, setInitEth] = useState(1)
-  const [currentEth, setCurrentEth] = useState(1)
+  // const [currentEth, setCurrentEth] = useState(1)
   const [started, setStarted] = useState(false)
   function cal(type, value) {
     let prevPool = null, nextPool = {}, swap_result = null, eth_price = null
@@ -42,13 +42,13 @@ function App() {
       <h4>Pair eth - usdt</h4>
       <div>
         K is {started === false ? <CustomerNumberFormat type="input" value={k} onValueChange={(values) => {
-          const { formattedValue, value } = values;
+          const { value } = values;
           setK(value)
         }} thousandSeparator={true} decimalScale={3} /> : num(k) }
       </div>
       <div style={{marginTop: "10px"}}>
         Init pool: ({started === false ? <CustomerNumberFormat type="input" value={initEth} onValueChange={(values) => {
-          const { formattedValue, value } = values;
+          const { value } = values;
           setInitEth(value)
         }} thousandSeparator={true} decimalScale={3} /> : num(initEth)} ETH, 
         {num(k/initEth)} USDT), init price: 
