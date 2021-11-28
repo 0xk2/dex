@@ -22,7 +22,10 @@ function App() {
     usdt: 1000000
   })
   const [newPoolChange, setNewPoolChange] = useState({...poolFormat})
-  
+  const [pairName, setPairName] = useState({
+    eth: 'ETH',
+    usdt: 'USDT'
+  })
   const [txns, setTxns] = useState([])
   const [newTxn, setNewTxn] = useState({...defaultTxn})
   const [fee, setFee] = useState(0.0025)
@@ -47,7 +50,7 @@ function App() {
       swap_result = prevPool.usdt - nextPool.usdt
       eth_price = swap_result / value
     }
-    return {value, type, swap_result, eth_price, nextPool};
+    return {value, type, swap_result, eth_price, nextPool, eth: pairName.eth, usdt: pairName.usdt};
   }
   function swap(){
     if(newTxn.value > 0){
@@ -70,7 +73,7 @@ function App() {
   
   const priceDataSet = [
     {
-      label: 'ETH - USDT price',
+      label: `${pairName.eth} - ${pairName.usdt} price`,
       data: txns.map((txn) => {return txn.eth_price}),
       borderColor: 'yellow',
       backgroundColor: 'rgba(255, 99, 132, 0.5)',
@@ -78,13 +81,13 @@ function App() {
   ];
   const lpDataSet = [
     {
-      label: 'ETH',
+      label: pairName.eth,
       data: txns.map((txn) => {return txn.nextPool.eth}),
       yAxisID: 'eth',
       borderColor: 'rgba(255, 99, 132, 0.5)',
     },
     {
-      label: 'USDT',
+      label: pairName.usdt,
       data: txns.map((txn) => {return txn.nextPool.usdt}),
       yAxisID: 'usdt',
       borderColor: 'rgba(53, 162, 235, 0.5)',
@@ -105,31 +108,36 @@ function App() {
         <Row>
           <Col lg={9}>
             <h1>AMM demo, a sample DEX</h1>
-            <h4>Pair eth - usdt</h4>
-            {CustomChart.PriceChart({title: 'Eth price after transactions', labels, datasets: priceDataSet})}
+            <h4>Pair {pairName.eth} - {pairName.usdt}</h4>
+            {CustomChart.PriceChart({title: `${pairName.eth} price after transactions`, labels, datasets: priceDataSet})}
             {CustomChart.LPChart({title: 'Liquidity pool after a txn', labels, datasets: lpDataSet})}
             {CustomChart.RFVChart({title: 'Risk Free Value', labels, datasets: rfvDataSet})}
             <div style={{marginTop: "10px"}}>
+              <div>
+                Pair name: 
+                  <input value={pairName.eth} onChange={(e) => {setPairName({...pairName, eth: e.target.value})}} />,
+                  <input value={pairName.usdt} onChange={(e) => {setPairName({...pairName, usdt: e.target.value})}} />
+              </div>
               Init pool: ({started === false ? <>
                 <CustomerNumberFormat type="input" value={initPool.eth} onValueChange={(values) => {
                   const { value } = values;
                   setInitPool({...initPool, eth: value})
-                }} thousandSeparator={true} decimalScale={3} suffix="eth" />, 
+                }} thousandSeparator={true} decimalScale={3} suffix={pairName.e} />, 
                 <CustomerNumberFormat type="input" value={initPool.usdt} onValueChange={(values) => {
                   const { value } = values;
                   setInitPool({...initPool, usdt: value})
-                }} thousandSeparator={true} decimalScale={3} suffix="usdt" />); with K={num(initPool.eth * initPool.usdt)}, 
-                {initPool.eth > 0 ? <span>1 ETH={num(initPool.usdt / initPool.eth)} USDT</span> : null}
+                }} thousandSeparator={true} decimalScale={3} suffix={pairName.usdt} />); with K={num(initPool.eth * initPool.usdt)}, 
+                {initPool.eth > 0 ? <span>1 {pairName.eth}={num(initPool.usdt / initPool.eth)} {pairName.usdt}</span> : null}
               </>: <>
-                {num(initPool.eth)} ETH, {num(initPool.usdt)} USDT, 
-                K={num(initPool.eth * initPool.usdt)}, 1 ETH={num(initPool.usdt / initPool.eth)} USDT
+                {num(initPool.eth)} {pairName.eth}, {num(initPool.usdt)} {pairName.usdt}, 
+                K={num(initPool.eth * initPool.usdt)}, 1 {pairName.eth}={num(initPool.usdt / initPool.eth)} {pairName.usdt}
               </>}
             </div>
             <div>
               Fee: {started === false? <><CustomerNumberFormat type="input" value={fee} onValueChange={(values) => {
                 const {value} = values
                 setFee(parseFloat(value))
-              }} /> aka</> : null} {fee*100}% {started === true ? <> - Total fee: {num(eth_fee)} ETH, {num(usdt_fee)} USDT</>:null}
+              }} /> aka</> : null} {fee*100}% {started === true ? <> - Total fee: {num(eth_fee)} {pairName.eth}, {num(usdt_fee)} {pairName.usdt}</>:null}
             </div>
             <div>
               {started === false? <button onClick={() => {
@@ -148,8 +156,8 @@ function App() {
                   const type = e.target.value
                   setNewTxn({...cal(type, value)})
                 }}>
-                  <option value="get_eth">Swap USDT for ETH</option>
-                  <option value="get_usdt">Swap ETH for USDT</option>
+                  <option value="get_eth">Swap {pairName.usdt} for {pairName.eth}</option>
+                  <option value="get_usdt">Swap {pairName.eth} for {pairName.usdt}</option>
                 </select>; swap <CustomerNumberFormat type="input" value={newTxn.value} onValueChange={(values) => {
                   const value = parseFloat(values.value)
                   const type = newTxn.type
@@ -159,15 +167,15 @@ function App() {
                     swap()
                   }
                 }} /> 
-                {newTxn.type === "get_eth" ? "USDT" : "ETH"} for {num(newTxn.swap_result)} {newTxn.type !== "get_eth" ? "USDT" : "ETH"} 
-                - price: 1 ETH = {num(newTxn.eth_price)} USDT 
+                {newTxn.type === "get_eth" ? pairName.usdt : pairName.eth} for {num(newTxn.swap_result)} {newTxn.type !== "get_eth" ? pairName.usdt : pairName.eth} 
+                - price: 1 {pairName.eth} = {num(newTxn.eth_price)} {pairName.usdt} 
                 &nbsp; <button onClick={swap}>Swap now</button>
               </div>
               <div>
                 <div>Provide or extract liquidity from the dex 
                   {txns.length > 0 ? 
-                    <span>{num(txns[txns.length - 1].nextPool.eth)} ETH, {num(txns[txns.length - 1].nextPool.usdt)} USDT</span>
-                  : <span>{num(initPool.eth)} ETH, {num(initPool.usdt)} USDT</span>}
+                    <span>{num(txns[txns.length - 1].nextPool.eth)} {pairName.eth}, {num(txns[txns.length - 1].nextPool.usdt)} {pairName.usdt}</span>
+                  : <span>{num(initPool.eth)} {pairName.eth}, {num(initPool.usdt)} {pairName.usdt}</span>}
                 </div>
                 <div>
                   <CustomerNumberFormat type="input" value={newPoolChange.eth} onValueChange={(values) => {
@@ -194,7 +202,7 @@ function App() {
                     }
                     const _newTxn = {value:0, type:'liquidity_change', swap_result: 0, 
                       eth_price: nextPool.usdt/ nextPool.eth, 
-                      nextPool}
+                      nextPool, eth: pairName.eth, usdt: pairName.usdt}
                     setTxns([...txns, _newTxn])
                     setNewPoolChange({...poolFormat})
                   }}>Commit the change</button>
