@@ -90,6 +90,15 @@ function App() {
       borderColor: 'rgba(53, 162, 235, 0.5)',
     }
   ]
+  const rfvDataSet = [
+    {
+      label: 'Risk Free Value 2*sqrt(K)',
+      data: txns.map((txn) => {return 2*Math.sqrt(txn.nextPool.eth*txn.nextPool.usdt)}),
+      backgroundColor: 'rgba(53, 162, 235, 0.5)',
+      borderColor: 'rgba(53, 162, 235, 0.5)',
+      fill: true
+    }
+  ]
   return (
     <div className="App">
       <Container>
@@ -99,6 +108,7 @@ function App() {
             <h4>Pair eth - usdt</h4>
             {CustomChart.PriceChart({title: 'Eth price after transactions', labels, datasets: priceDataSet})}
             {CustomChart.LPChart({title: 'Liquidity pool after a txn', labels, datasets: lpDataSet})}
+            {CustomChart.RFVChart({title: 'Risk Free Value', labels, datasets: rfvDataSet})}
             <div style={{marginTop: "10px"}}>
               Init pool: ({started === false ? <>
                 <CustomerNumberFormat type="input" value={initPool.eth} onValueChange={(values) => {
