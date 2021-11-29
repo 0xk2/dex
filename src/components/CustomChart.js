@@ -83,9 +83,28 @@ const RFVChart = function(props) {
     datasets: props.datasets,
   }} height={200} width={1000} />
 }
+const TokenCirculationChart = function(props) {
+  return <Line options={{
+    responsive: true,
+    // maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: props.title,
+      },
+    },
+  }} 
+  data={{
+    labels: props.labels,
+    datasets: props.datasets,
+  }} height={200} width={1000} />
+}
 
 const CustomChart = {
-  LPChart, PriceChart, RFVChart
+  LPChart, PriceChart, RFVChart, TokenCirculationChart
 }
 
 export default CustomChart;

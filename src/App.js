@@ -4,6 +4,8 @@ import CustomerNumberFormat from './components/CustomNumerFormat';
 import CustomChart from './components/CustomChart';
 import { Container, Row, Col } from 'react-bootstrap';
 import Transaction from './components/Transaction';
+import Epoch from './components/Epoch';
+import { calNextTotalSupply,getApy } from './utils';
 
 const defaultTxn = {
   type: "get_eth",
@@ -16,6 +18,7 @@ const poolFormat = {
 function num(val){
   return <CustomerNumberFormat value={val} displayType={'text'} thousandSeparator={true} decimalScale={5} highlight={1} />
 }
+
 function App() {
   const [initPool, setInitPool] = useState({
     eth: 1000,
@@ -31,13 +34,29 @@ function App() {
   const [fee, setFee] = useState(0.0025)
   const [started, setStarted] = useState(false)
   const [ui, setUI] = useState('treasury') // dex, treasury
-  const [treasuryParam, setTreasuryParam] = useState({
+  const [treasuryEvents, setTreasuryEvents] = useState({
     epoch: 3,
-    rr: 0.003058,
-    sohm_over_tohm: 0.9,
-    bond_discount_dex_lp: 0.003,
-    bond_discount_direct: 0.005
+    init: {
+      totalNoOfToken: 3,
+      rr: 0.003058,
+      stakedOverTotalSupply: 1,
+      bondDiscountDexLP: 0.003,
+      bondDiscountDirect: 0.005,
+    },
+    events: []
   })
+
+  function getRFV(){
+    let directBondBought = 0;
+    for(var i=0;i<treasuryEvents.events.length;i++){
+      directBondBought += treasuryEvents.events[i].directBondBought
+    }
+    if(txns.length > 0){
+      return directBondBought+2*Math.sqrt(txns[txns.length-1].nextPool.eth * txns[txns.length-1].nextPool.usdt) // * ownership
+    }
+    return directBondBought;
+  }
+  
   function cal(type, value) {
     let prevPool = null, nextPool = {}, swap_result = null, eth_price = null
     if(txns.length === 0){
@@ -66,6 +85,7 @@ function App() {
       alert('invalid value!')
     }
   }
+  
   let eth_fee = 0;
   let usdt_fee = 0;
   for(var i=0;i<txns.length;i++){
@@ -76,6 +96,7 @@ function App() {
     }
   }
   const labels = Array.from({length: txns.length}, (_, i) => i)
+  const epochLabels = Array.from({length: treasuryEvents.events.length}, (_, i) => i)
   
   const priceDataSet = [
     {
@@ -99,6 +120,26 @@ function App() {
       borderColor: 'rgba(53, 162, 235, 0.5)',
     }
   ]
+  const epochDataSet = [
+    {
+      label: 'Total Supply',
+      data: treasuryEvents.events.map((event) => {return event.totalNoOfToken}),
+      borderColor: 'rgba(255, 99, 132, 0.5)',
+      fill: true
+    },
+    {
+      label: 'Staked Supply',
+      data: treasuryEvents.events.map((event) => {return event.totalNoOfToken*event.stakedOverTotalSupply}),
+      borderColor: 'rgba(53, 162, 235, 0.5)',
+      fill: true
+    }
+  ]
+  let lastEpoch = treasuryEvents.init
+  const {epoch, events} = treasuryEvents
+  if(events.length > 0){
+    lastEpoch = events[events.length - 1]
+  }
+  lastEpoch.epoch = epoch
   return (
     <div className="App">
       <Container>
@@ -133,7 +174,7 @@ function App() {
                 <CustomerNumberFormat type="input" value={initPool.eth} onValueChange={(values) => {
                   const value = parseFloat(values.value);
                   setInitPool({...initPool, eth: value})
-                }} thousandSeparator={true} decimalScale={3} suffix={pairName.e} />, 
+                }} thousandSeparator={true} decimalScale={3} suffix={pairName.eth} />, 
                 <CustomerNumberFormat type="input" value={initPool.usdt} onValueChange={(values) => {
                   const value = parseFloat(values.value);
                   setInitPool({...initPool, usdt: value})
@@ -231,40 +272,49 @@ function App() {
         :null}
         {ui==='treasury'?
         <Row className="main">
-          <Col>
+          <Col lg={9}>
             <div>
-              Epoch per day <CustomerNumberFormat type="input" value={treasuryParam.epoch} onValueChange={(values) => {
+              Epoch per day <CustomerNumberFormat type="input" value={treasuryEvents.epoch} onValueChange={(values) => {
                 const value = parseFloat(values.value);
-                setTreasuryParam({...treasuryParam, epoch: value})
+                setTreasuryEvents({...treasuryEvents, epoch: value})
               }} thousandSeparator={true} decimalScale={3} /> 
             </div>
+            {CustomChart.TokenCirculationChart({title: 'Token circulation chart', labels: epochLabels, datasets: epochDataSet})}
             <div>
-              Reward rate 
-              <CustomerNumberFormat type="input" value={treasuryParam.rr} onValueChange={(values) => {
-                const value = parseFloat(values.value);
-                setTreasuryParam({...treasuryParam, rr: value})
-              }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> ({treasuryParam.rr*100}%) 
+              <div>
+                Epoch #{events.length}, circulating tokens: {num(lastEpoch.totalNoOfToken)}, 
+                <div>
+                  <div>
+                    Risk Free Value: {num(getRFV())} {pairName.usdt}
+                  </div>
+                  <div>
+                    Mintable tokens (bonds-able to sell): {num(getRFV() - lastEpoch.totalNoOfToken)} {pairName.eth} {txns.length > 0? <>({num((getRFV() - lastEpoch.totalNoOfToken) * txns[txns.length-1].eth_price)} {pairName.usdt})</> : null}
+                  </div>
+                </div>
+              </div>
+              <div>Current price {txns.length > 0 ? <>{num(txns[txns.length-1].eth_price)} {pairName.usdt}</>: <>Not listed</>}</div>
+              <div>APY: {num(getApy(lastEpoch.stakedOverTotalSupply,lastEpoch.rr,lastEpoch.epoch))}%</div>
+              {/* <div>Run Way: {calRunway({
+                apy:getApy(this.state.stakedOverTotalSupply,this.state.rr,this.props.epoch), 
+                treasuryRfv: this.props.rfv, 
+                noOfStakedToken:
+              })} (days)</div> */}
+              <h3>Event in this epoch:</h3>
+              {console.log(lastEpoch.totalNoOfToken)}
+              <Epoch {...lastEpoch} eth={pairName.eth} usdt={pairName.usdt} 
+              maxDirectBond={num(getRFV() - lastEpoch.totalNoOfToken)} 
+              rfv={getRFV()}
+              price={txns.length > 0 ? txns[txns.length-1].eth_price : 0}
+              add={({rr, stakedOverTotalSupply, directBondBought}) => {
+                const tmp = {...treasuryEvents}
+                tmp.events.push({
+                  rr, stakedOverTotalSupply, directBondBought,
+                  totalNoOfToken: calNextTotalSupply({totalNoOfToken: lastEpoch.totalNoOfToken, rr, stakedOverTotalSupply, directBondBought})
+                })
+                setTreasuryEvents({...tmp})
+              }}/>
             </div>
-            <div>
-              Staked OHM / Total OHM 
-              <CustomerNumberFormat type="input" value={treasuryParam.sohm_over_tohm} onValueChange={(values) => {
-                const value = parseFloat(values.value);
-                setTreasuryParam({...treasuryParam, sohm_over_tohm: value})
-              }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> ({treasuryParam.sohm_over_tohm*100}%)
-            </div>
-            <div>APY: {num(Math.pow(1+treasuryParam.rr / treasuryParam.sohm_over_tohm, 365*treasuryParam.epoch)*100)}%</div>
-            <div>
-              LP from dex discount <CustomerNumberFormat type="input" value={treasuryParam.bond_discount_dex_lp} onValueChange={(values) => {
-                const value = parseFloat(values.value);
-                setTreasuryParam({...treasuryParam, bond_discount_dex_lp: value})
-              }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> ({treasuryParam.bond_discount_dex_lp*100}%) 
-            </div>
-            <div>
-              Direct bond discount <CustomerNumberFormat type="input" value={treasuryParam.bond_discount_direct} onValueChange={(values) => {
-                const value = parseFloat(values.value);
-                setTreasuryParam({...treasuryParam, bond_discount_direct: value})
-              }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> ({treasuryParam.bond_discount_direct*100}%) 
-            </div>
+            
           </Col>
         </Row>
         :null}
