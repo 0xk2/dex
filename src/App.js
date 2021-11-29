@@ -147,10 +147,19 @@ function App() {
   ]
   const runWayDataSet = [
     {
-      label: 'RunWay',
+      label: 'RunWay (days)',
       data: treasuryEvents.events.map((event) => {return event.runway}),
       borderColor: 'rgba(255, 99, 132, 0.5)',
       backgroundColor: 'rgba(255, 99, 132, 0.5)',
+      fill: true
+    },
+  ]
+  const bondsOutstandingDataSet = [
+    {
+      label: 'DAO treasury = Bond Outstandings',
+      data: treasuryEvents.events.map((event) => {return event.bondsOutstanding}),
+      borderColor: 'rgba(53, 162, 235, 0.5)',
+      backgroundColor: 'rgba(53, 162, 235, 0.5)',
       fill: true
     },
   ]
@@ -306,7 +315,8 @@ function App() {
             </div>
             {CustomChart.TokenCirculationChart({title: 'Token circulation chart', labels: epochLabels, datasets: epochDataSet})}
             {CustomChart.PriceChart({title: 'Market cap', labels: epochLabels, datasets: marketCap})}
-            {CustomChart.PriceChart({title: 'Run Way (days)', labels: epochLabels, datasets: runWayDataSet})}
+            {CustomChart.PriceChart({title: 'Runway dataset', labels: epochLabels, datasets: runWayDataSet})}
+            {CustomChart.PriceChart({title: pairName.usdt, labels: epochLabels, datasets: bondsOutstandingDataSet})}
             <div>
               <div>
                 Epoch #{events.length}: Total supply: {num(lastEpoch.totalSupply)}, 
@@ -322,11 +332,11 @@ function App() {
               </div>
               <div>Current price {txns.length > 0 ? <>{num(txns[txns.length-1].eth_price)} {pairName.usdt}</>: <>Not listed</>}</div>
               <div>APY: {num(getApy(lastEpoch.stakedOverTotalSupply,lastEpoch.rewardRate,lastEpoch.epoch)*100)}%</div>
-              <div>Run Way: {calRunway({
+              <div>Run Way: {num(calRunway({
                 apy:getApy(lastEpoch.stakedOverTotalSupply,lastEpoch.rewardRate,lastEpoch.epoch), 
                 treasuryRfv: getRFV(), 
                 noOfStakedToken: lastEpoch.totalSupply * lastEpoch.stakedOverTotalSupply
-              })} (days)</div>
+              }))} (days)</div>
               <h3>Event in this epoch:</h3>
               <Epoch {...lastEpoch} eth={pairName.eth} usdt={pairName.usdt} 
               rfv={getRFV()}
@@ -344,7 +354,8 @@ function App() {
                     apy:getApy(stakedOverTotalSupply,rewardRate,epoch), 
                     treasuryRfv: getRFV(), 
                     noOfStakedToken: totalSupply * stakedOverTotalSupply
-                  })
+                  }),
+                  bondsOutstanding
                 }
                 tmp.events.push(epochEvent)
                 setTreasuryEvents({...tmp})
