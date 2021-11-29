@@ -1,12 +1,13 @@
 export function getApy(stakedOverTotalSupply, RewardRate, epoch){
-  return Math.pow(1+RewardRate / stakedOverTotalSupply, 365*epoch)*100
+  return Math.pow(1+RewardRate / stakedOverTotalSupply, 365*epoch)
 };
 
-export function calNextTotalSupply({totalNoOfToken, rr, stakedOverTotalSupply, directBondBought}){
+export function calNextTotalSupply({totalSupply, rewardRate, stakedOverTotalSupply, bonderGrowth}){
   // bond mua xong có stake luôn không?
-  console.log('calNextTotalSupply: totalNoOfToken ',totalNoOfToken);
-  console.log('calNextTotalSupply: totalNoOfToken * RewardRateYield ',totalNoOfToken * rr/stakedOverTotalSupply);
-  return totalNoOfToken * (1 + rr / stakedOverTotalSupply) + directBondBought
+  const stakerGrowth = totalSupply * rewardRate / stakedOverTotalSupply
+  const daoGrowth = bonderGrowth
+  const pohmExerciseGrowth = 0
+  return totalSupply + stakerGrowth + bonderGrowth + daoGrowth + pohmExerciseGrowth;
 };
 
 export function calRunway({apy, treasuryRfv, noOfStakedToken}) {

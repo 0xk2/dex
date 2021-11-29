@@ -4,16 +4,18 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Line, Bar } from 'react-chartjs-2';
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend
@@ -84,7 +86,7 @@ const RFVChart = function(props) {
   }} height={200} width={1000} />
 }
 const TokenCirculationChart = function(props) {
-  return <Line options={{
+  return <Bar options={{
     responsive: true,
     // maintainAspectRatio: false,
     plugins: {

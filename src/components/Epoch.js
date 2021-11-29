@@ -8,37 +8,47 @@ function num(val){
 export default class Epoch extends React.Component{
   constructor(props){
     super()
-    const {rr, stakedOverTotalSupply} = props
-    this.state = {rr, stakedOverTotalSupply, directBondBought:0}
+    const {rewardRate, stakedOverTotalSupply} = props
+    this.state = {rewardRate, stakedOverTotalSupply, reserveBondBought:0, bcv: 1}
   }
   render() {
     return <div className="epoch-dialog">
       <div>
         Reward rate 
-        <CustomerNumberFormat type="input" value={this.state.rr} onValueChange={(values) => {
+        <CustomerNumberFormat type="input" value={this.state.rewardRate} onValueChange={(values) => {
           const value = parseFloat(values.value);
-          this.setState({...this.state, rr: value})
-        }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> ({this.state.rr*100}%) 
+          this.setState({...this.state, rewardRate: value})
+        }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> 
+        ({this.state.rewardRate*100}%) 
       </div>
       <div>
-        Staked Over Total
+        Staked Over Total (&lt; 1)
         <CustomerNumberFormat type="input" value={this.state.stakedOverTotalSupply} onValueChange={(values) => {
           const value = parseFloat(values.value);
           this.setState({...this.state, stakedOverTotalSupply: value})
-        }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> ({this.state.stakedOverTotalSupply*100}%)
+        }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue > 0} /> ({this.state.stakedOverTotalSupply*100}%)
       </div>
       <div>
-        Bond to buy, max: {this.props.maxDirectBond} {this.props.eth}
-        <CustomerNumberFormat type="input" value={this.state.directBondBought} onValueChange={(values) => {
+        BCV value &gt; 0 (1,2)
+        <CustomerNumberFormat type="input" value={this.state.bcv} onValueChange={(values) => {
           const value = parseFloat(values.value);
-          this.setState({...this.state, directBondBought: value})
-        }} thousandSeparator={true} decimalScale={9} />
-        {/* isAllowed={({floatValue}) => floatValue <= parseFloat(this.props.maxDirectBond)} />  */}
-         ({num(this.state.directBondBought*this.props.price)} {this.props.usdt}) 
+          this.setState({...this.state, bcv: value})
+        }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} />
+      </div>
+      <div>
+        Buy Reseave bond:
+        <CustomerNumberFormat type="input" value={this.state.reserveBondBought} onValueChange={(values) => {
+          const value = parseFloat(values.value);
+          this.setState({...this.state, reserveBondBought: value})
+        }} thousandSeparator={true} decimalScale={9} suffix={this.props.usdt} />
+        with price {num(1 + this.props.bondsOutstanding / this.props.totalSupply * this.state.bcv)} {this.props.usdt}&nbsp;
+        for {num(this.state.reserveBondBought/(1 + this.props.bondsOutstanding / this.props.totalSupply * this.state.bcv))} {this.props.eth}
       </div>
       <div><button onClick={() => {
-        const {rr, stakedOverTotalSupply, directBondBought} = this.state
-        this.props.add({rr, stakedOverTotalSupply, directBondBought})
+        const {rewardRate, stakedOverTotalSupply, reserveBondBought, bcv} = this.state
+        const bondPrice = 1 + this.props.bondsOutstanding / this.props.totalSupply * bcv
+        const bonderGrowth = reserveBondBought / bondPrice
+        this.props.add({rewardRate, stakedOverTotalSupply, bonderGrowth, reserveBondBought, bcv})
       }}>Next epoch</button></div>
     </div>
   }

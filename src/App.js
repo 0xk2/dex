@@ -5,7 +5,7 @@ import CustomChart from './components/CustomChart';
 import { Container, Row, Col } from 'react-bootstrap';
 import Transaction from './components/Transaction';
 import Epoch from './components/Epoch';
-import { calNextTotalSupply,getApy } from './utils';
+import { calNextTotalSupply,getApy,calRunway } from './utils';
 
 const defaultTxn = {
   type: "get_eth",
@@ -37,8 +37,8 @@ function App() {
   const [treasuryEvents, setTreasuryEvents] = useState({
     epoch: 3,
     init: {
-      totalNoOfToken: 3,
-      rr: 0.003058,
+      totalSupply: 3,
+      rewardRate: 0.003058,
       stakedOverTotalSupply: 1,
       bondDiscountDexLP: 0.003,
       bondDiscountDirect: 0.005,
@@ -47,14 +47,14 @@ function App() {
   })
 
   function getRFV(){
-    let directBondBought = 0;
+    let reserveBondBought = 0;
     for(var i=0;i<treasuryEvents.events.length;i++){
-      directBondBought += treasuryEvents.events[i].directBondBought
+      reserveBondBought += treasuryEvents.events[i].reserveBondBought
     }
     if(txns.length > 0){
-      return directBondBought+2*Math.sqrt(txns[txns.length-1].nextPool.eth * txns[txns.length-1].nextPool.usdt) // * ownership
+      return reserveBondBought+2*Math.sqrt(txns[txns.length-1].nextPool.eth * txns[txns.length-1].nextPool.usdt) // * ownership
     }
-    return directBondBought;
+    return reserveBondBought;
   }
   
   function cal(type, value) {
@@ -123,16 +123,36 @@ function App() {
   const epochDataSet = [
     {
       label: 'Total Supply',
-      data: treasuryEvents.events.map((event) => {return event.totalNoOfToken}),
+      data: treasuryEvents.events.map((event) => {return event.totalSupply}),
       borderColor: 'rgba(255, 99, 132, 0.5)',
+      backgroundColor: 'rgba(255, 99, 132, 0.5)',
       fill: true
     },
     {
       label: 'Staked Supply',
-      data: treasuryEvents.events.map((event) => {return event.totalNoOfToken*event.stakedOverTotalSupply}),
+      data: treasuryEvents.events.map((event) => {return event.totalSupply*event.stakedOverTotalSupply}),
       borderColor: 'rgba(53, 162, 235, 0.5)',
+      backgroundColor: 'rgba(53, 162, 235, 0.5)',
       fill: true
     }
+  ]
+  const marketCap = [
+    {
+      label: 'Market cap',
+      data: treasuryEvents.events.map((event) => {return event.totalSupply * event.eth_price}),
+      borderColor: 'rgba(255, 99, 132, 0.5)',
+      backgroundColor: 'rgba(255, 99, 132, 0.5)',
+      fill: true
+    },
+  ]
+  const runWayDataSet = [
+    {
+      label: 'RunWay',
+      data: treasuryEvents.events.map((event) => {return event.runway}),
+      borderColor: 'rgba(255, 99, 132, 0.5)',
+      backgroundColor: 'rgba(255, 99, 132, 0.5)',
+      fill: true
+    },
   ]
   let lastEpoch = treasuryEvents.init
   const {epoch, events} = treasuryEvents
@@ -140,6 +160,11 @@ function App() {
     lastEpoch = events[events.length - 1]
   }
   lastEpoch.epoch = epoch
+  let bondsOutstanding = 0
+  for(i=0;i<treasuryEvents.events.length;i++){
+    const lastBonderGrowth = treasuryEvents.events[i].bonderGrowth !== null ? treasuryEvents.events[i].bonderGrowth : 0
+    bondsOutstanding += lastBonderGrowth
+  }
   return (
     <div className="App">
       <Container>
@@ -280,37 +305,48 @@ function App() {
               }} thousandSeparator={true} decimalScale={3} /> 
             </div>
             {CustomChart.TokenCirculationChart({title: 'Token circulation chart', labels: epochLabels, datasets: epochDataSet})}
+            {CustomChart.PriceChart({title: 'Market cap', labels: epochLabels, datasets: marketCap})}
+            {CustomChart.PriceChart({title: 'Run Way (days)', labels: epochLabels, datasets: runWayDataSet})}
             <div>
               <div>
-                Epoch #{events.length}, circulating tokens: {num(lastEpoch.totalNoOfToken)}, 
+                Epoch #{events.length}: Total supply: {num(lastEpoch.totalSupply)}, 
                 <div>
                   <div>
                     Risk Free Value: {num(getRFV())} {pairName.usdt}
                   </div>
                   <div>
-                    Mintable tokens (bonds-able to sell): {num(getRFV() - lastEpoch.totalNoOfToken)} {pairName.eth} {txns.length > 0? <>({num((getRFV() - lastEpoch.totalNoOfToken) * txns[txns.length-1].eth_price)} {pairName.usdt})</> : null}
+                    {/* DAO fund = Bond outstanding */}
+                    DAO fund: {num(bondsOutstanding)} {pairName.eth}
                   </div>
                 </div>
               </div>
               <div>Current price {txns.length > 0 ? <>{num(txns[txns.length-1].eth_price)} {pairName.usdt}</>: <>Not listed</>}</div>
-              <div>APY: {num(getApy(lastEpoch.stakedOverTotalSupply,lastEpoch.rr,lastEpoch.epoch))}%</div>
-              {/* <div>Run Way: {calRunway({
-                apy:getApy(this.state.stakedOverTotalSupply,this.state.rr,this.props.epoch), 
-                treasuryRfv: this.props.rfv, 
-                noOfStakedToken:
-              })} (days)</div> */}
+              <div>APY: {num(getApy(lastEpoch.stakedOverTotalSupply,lastEpoch.rewardRate,lastEpoch.epoch)*100)}%</div>
+              <div>Run Way: {calRunway({
+                apy:getApy(lastEpoch.stakedOverTotalSupply,lastEpoch.rewardRate,lastEpoch.epoch), 
+                treasuryRfv: getRFV(), 
+                noOfStakedToken: lastEpoch.totalSupply * lastEpoch.stakedOverTotalSupply
+              })} (days)</div>
               <h3>Event in this epoch:</h3>
-              {console.log(lastEpoch.totalNoOfToken)}
               <Epoch {...lastEpoch} eth={pairName.eth} usdt={pairName.usdt} 
-              maxDirectBond={num(getRFV() - lastEpoch.totalNoOfToken)} 
               rfv={getRFV()}
-              price={txns.length > 0 ? txns[txns.length-1].eth_price : 0}
-              add={({rr, stakedOverTotalSupply, directBondBought}) => {
+              price={txns.length > 0 ? txns[txns.length-1].eth_price : 0} 
+              bondsOutstanding={bondsOutstanding}
+              add={({rewardRate, stakedOverTotalSupply, bonderGrowth, reserveBondBought}) => {
                 const tmp = {...treasuryEvents}
-                tmp.events.push({
-                  rr, stakedOverTotalSupply, directBondBought,
-                  totalNoOfToken: calNextTotalSupply({totalNoOfToken: lastEpoch.totalNoOfToken, rr, stakedOverTotalSupply, directBondBought})
-                })
+                const totalSupply = calNextTotalSupply({totalSupply: lastEpoch.totalSupply, rewardRate, stakedOverTotalSupply, bonderGrowth})
+                const epochEvent = { 
+                  rewardRate, stakedOverTotalSupply, 
+                  totalSupply, bonderGrowth, reserveBondBought, 
+                  eth_price: txns.length > 0 ? txns[txns.length-1].eth_price : 0,
+                  treasuryRfv: getRFV(),
+                  runway: calRunway({
+                    apy:getApy(stakedOverTotalSupply,rewardRate,epoch), 
+                    treasuryRfv: getRFV(), 
+                    noOfStakedToken: totalSupply * stakedOverTotalSupply
+                  })
+                }
+                tmp.events.push(epochEvent)
                 setTreasuryEvents({...tmp})
               }}/>
             </div>
