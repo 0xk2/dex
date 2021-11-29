@@ -5,3 +5,10 @@
   height: calc(100vh);
   overflow: scroll;
 }
+.header {
+  padding: 15px 0px;
+  background-color: #ccc;
+}
+.main {
+  padding: 15px 0px;
+}

@@ -23,14 +23,21 @@ function App() {
   })
   const [newPoolChange, setNewPoolChange] = useState({...poolFormat})
   const [pairName, setPairName] = useState({
-    eth: 'ETH',
-    usdt: 'USDT'
+    eth: 'OHM',
+    usdt: 'DAI'
   })
   const [txns, setTxns] = useState([])
   const [newTxn, setNewTxn] = useState({...defaultTxn})
   const [fee, setFee] = useState(0.0025)
-  // const [currentEth, setCurrentEth] = useState(1)
   const [started, setStarted] = useState(false)
+  const [ui, setUI] = useState('treasury') // dex, treasury
+  const [treasuryParam, setTreasuryParam] = useState({
+    epoch: 3,
+    rr: 0.003058,
+    sohm_over_tohm: 0.9,
+    bond_discount_dex_lp: 0.003,
+    bond_discount_direct: 0.005
+  })
   function cal(type, value) {
     let prevPool = null, nextPool = {}, swap_result = null, eth_price = null
     if(txns.length === 0){
@@ -39,7 +46,6 @@ function App() {
       prevPool = {...txns[txns.length - 1].nextPool}
     }
     if(type === 'get_eth'){
-      // val is USDT
       nextPool.usdt = prevPool.usdt + value
       nextPool.eth = (prevPool.eth * prevPool.usdt)/nextPool.usdt
       swap_result = prevPool.eth - nextPool.eth
@@ -50,7 +56,7 @@ function App() {
       swap_result = prevPool.usdt - nextPool.usdt
       eth_price = swap_result / value
     }
-    return {value, type, swap_result, eth_price, nextPool, eth: pairName.eth, usdt: pairName.usdt};
+    return {value, type, swap_result, eth_price, nextPool, eth_label: pairName.eth, usdt_label: pairName.usdt};
   }
   function swap(){
     if(newTxn.value > 0){
@@ -93,38 +99,43 @@ function App() {
       borderColor: 'rgba(53, 162, 235, 0.5)',
     }
   ]
-  const rfvDataSet = [
-    {
-      label: 'Risk Free Value 2*sqrt(K)',
-      data: txns.map((txn) => {return 2*Math.sqrt(txn.nextPool.eth*txn.nextPool.usdt)}),
-      backgroundColor: 'rgba(53, 162, 235, 0.5)',
-      borderColor: 'rgba(53, 162, 235, 0.5)',
-      fill: true
-    }
-  ]
   return (
     <div className="App">
       <Container>
-        <Row>
+        <Row className="header">
+          <Col>
+            <div>
+              Select UI 
+              <select value={ui} onChange={(e) => {setUI(e.target.value)}}>
+                <option value='dex'>AMM Exchange</option>
+                <option value='treasury'>Treasury</option>
+              </select>
+            </div>
+            <div>
+              Pair name: 
+              {started === false ? 
+              <>
+                <input value={pairName.eth} onChange={(e) => {setPairName({...pairName, eth: e.target.value})}} />,
+                back by: <input value={pairName.usdt} onChange={(e) => {setPairName({...pairName, usdt: e.target.value})}} />
+              </>: <>{pairName.eth}, back by: {pairName.usdt}</>}
+            </div>
+          </Col>
+        </Row>
+        {ui==='dex'?
+        <Row className="main">
           <Col lg={9}>
             <h1>AMM demo, a sample DEX</h1>
             <h4>Pair {pairName.eth} - {pairName.usdt}</h4>
             {CustomChart.PriceChart({title: `${pairName.eth} price after transactions`, labels, datasets: priceDataSet})}
             {CustomChart.LPChart({title: 'Liquidity pool after a txn', labels, datasets: lpDataSet})}
-            {CustomChart.RFVChart({title: 'Risk Free Value', labels, datasets: rfvDataSet})}
             <div style={{marginTop: "10px"}}>
-              <div>
-                Pair name: 
-                  <input value={pairName.eth} onChange={(e) => {setPairName({...pairName, eth: e.target.value})}} />,
-                  <input value={pairName.usdt} onChange={(e) => {setPairName({...pairName, usdt: e.target.value})}} />
-              </div>
               Init pool: ({started === false ? <>
                 <CustomerNumberFormat type="input" value={initPool.eth} onValueChange={(values) => {
-                  const { value } = values;
+                  const value = parseFloat(values.value);
                   setInitPool({...initPool, eth: value})
                 }} thousandSeparator={true} decimalScale={3} suffix={pairName.e} />, 
                 <CustomerNumberFormat type="input" value={initPool.usdt} onValueChange={(values) => {
-                  const { value } = values;
+                  const value = parseFloat(values.value);
                   setInitPool({...initPool, usdt: value})
                 }} thousandSeparator={true} decimalScale={3} suffix={pairName.usdt} />); with K={num(initPool.eth * initPool.usdt)}, 
                 {initPool.eth > 0 ? <span>1 {pairName.eth}={num(initPool.usdt / initPool.eth)} {pairName.usdt}</span> : null}
@@ -167,7 +178,8 @@ function App() {
                     swap()
                   }
                 }} /> 
-                {newTxn.type === "get_eth" ? pairName.usdt : pairName.eth} for {num(newTxn.swap_result)} {newTxn.type !== "get_eth" ? pairName.usdt : pairName.eth} 
+                {newTxn.type === "get_eth" ? pairName.usdt : pairName.eth} for {num(newTxn.swap_result)} 
+                {newTxn.type !== "get_eth" ? pairName.usdt : pairName.eth} 
                 - price: 1 {pairName.eth} = {num(newTxn.eth_price)} {pairName.usdt} 
                 &nbsp; <button onClick={swap}>Swap now</button>
               </div>
@@ -185,7 +197,7 @@ function App() {
                       eth: value,
                       usdt: currentPool.usdt/currentPool.eth * value
                     })
-                  }} thousandSeparator={true} decimalScale={3} suffix="eth" /> - 
+                  }} thousandSeparator={true} decimalScale={3} suffix={pairName.eth} /> - 
                   <CustomerNumberFormat type="input" value={newPoolChange.usdt} onValueChange={(values) => {
                     const value = parseFloat(values.value)
                     const currentPool = txns[txns.length - 1].nextPool
@@ -193,7 +205,7 @@ function App() {
                       usdt: value,
                       eth: currentPool.eth/currentPool.usdt * value
                     })
-                  }} thousandSeparator={true} decimalScale={3} suffix="usdt" />
+                  }} thousandSeparator={true} decimalScale={3} suffix={pairName.usdt} />
                   &nbsp;<button onClick={() => {
                     const currentPool = txns[txns.length - 1].nextPool
                     const nextPool = {
@@ -216,6 +228,46 @@ function App() {
             }).reverse()}
           </Col>
         </Row>
+        :null}
+        {ui==='treasury'?
+        <Row className="main">
+          <Col>
+            <div>
+              Epoch per day <CustomerNumberFormat type="input" value={treasuryParam.epoch} onValueChange={(values) => {
+                const value = parseFloat(values.value);
+                setTreasuryParam({...treasuryParam, epoch: value})
+              }} thousandSeparator={true} decimalScale={3} /> 
+            </div>
+            <div>
+              Reward rate 
+              <CustomerNumberFormat type="input" value={treasuryParam.rr} onValueChange={(values) => {
+                const value = parseFloat(values.value);
+                setTreasuryParam({...treasuryParam, rr: value})
+              }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> ({treasuryParam.rr*100}%) 
+            </div>
+            <div>
+              Staked OHM / Total OHM 
+              <CustomerNumberFormat type="input" value={treasuryParam.sohm_over_tohm} onValueChange={(values) => {
+                const value = parseFloat(values.value);
+                setTreasuryParam({...treasuryParam, sohm_over_tohm: value})
+              }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> ({treasuryParam.sohm_over_tohm*100}%)
+            </div>
+            <div>APY: {num(Math.pow(1+treasuryParam.rr / treasuryParam.sohm_over_tohm, 365*treasuryParam.epoch)*100)}%</div>
+            <div>
+              LP from dex discount <CustomerNumberFormat type="input" value={treasuryParam.bond_discount_dex_lp} onValueChange={(values) => {
+                const value = parseFloat(values.value);
+                setTreasuryParam({...treasuryParam, bond_discount_dex_lp: value})
+              }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> ({treasuryParam.bond_discount_dex_lp*100}%) 
+            </div>
+            <div>
+              Direct bond discount <CustomerNumberFormat type="input" value={treasuryParam.bond_discount_direct} onValueChange={(values) => {
+                const value = parseFloat(values.value);
+                setTreasuryParam({...treasuryParam, bond_discount_direct: value})
+              }} thousandSeparator={true} decimalScale={9} isAllowed={({floatValue}) => floatValue <= 1} /> ({treasuryParam.bond_discount_direct*100}%) 
+            </div>
+          </Col>
+        </Row>
+        :null}
       </Container>
     </div>
   )
