@@ -8,4 +8,8 @@ function CustomerNumberFormat(props){
   </div>
 }
 
+export function num(val){
+  return <CustomerNumberFormat value={val} displayType={'text'} thousandSeparator={true} decimalScale={5} highlight={1} />
+}
+
 export default CustomerNumberFormat;
