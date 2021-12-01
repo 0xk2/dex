@@ -8,7 +8,7 @@ class DexApp extends React.Component{
     super()
     this.state = {
       txns: [],
-      pairName: {eth:'OHM', usdt: 'DAI'},
+      pairName: {eth:'ETH', usdt: 'USDT'},
       initPool: {eth: 100, usdt: 400}
     }
   }

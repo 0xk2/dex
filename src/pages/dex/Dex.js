@@ -47,7 +47,6 @@ export default class Dex extends React.Component {
     const started = txns.length === 0 ? false : true;
     const {eth_fee, usdt_fee} = this.calFee()
     const labels = Array.from({length: txns.length}, (_, i) => i)
-    console.log("txns: ",txns)
     const currentPool = txns.length === 0 ? initPool : txns[txns.length - 1].nextPool
     return <Row>
       <Col lg={9}>
